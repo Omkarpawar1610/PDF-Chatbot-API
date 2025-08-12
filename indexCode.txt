@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PDF Chatbot</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; }
+    .chat-box { border: 1px solid #ddd; padding: 10px; height: 400px; overflow-y: auto; }
+    .user { background: #f1f1f1; padding: 8px; border-radius: 5px; margin: 5px; }
+    .bot { background: #d1e7dd; padding: 8px; border-radius: 5px; margin: 5px; }
+  </style>
+</head>
+<body>
+  <h2>Upload PDF</h2>
+  <input type="file" id="pdfFile"><br><br>
+  <div class="chat-box" id="chatBox"></div>
+  <input type="text" id="question" placeholder="Ask a question..." style="width: 80%;">
+  <button onclick="ask()">Send</button>
+
+  <script>
+    async function uploadPDF() {
+      let file = document.getElementById('pdfFile').files[0];
+      if (!file) {
+        alert("Please select a PDF file first.");
+        return;
+      }
+      let formData = new FormData();
+      formData.append("file", file);
+      let res = await fetch("http://127.0.0.1:8000/upload", {
+        method: "POST",
+        body: formData
+      });
+      let data = await res.json();
+      if (data.error) {
+        alert("Error uploading PDF: " + data.error);
+      } else {
+        alert(`PDF uploaded: ${data.file_name} (${data.total_chunks} chunks)`);
+      }
+    }
+
+    async function ask() {
+      let question = document.getElementById('question').value.trim();
+      if (!question) return;
+      document.getElementById('chatBox').innerHTML += `<div class="user">${question}</div>`;
+      document.getElementById('question').value = "";
+
+      let res = await fetch("http://127.0.0.1:8000/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: question })
+      });
+
+      let data = await res.json();
+
+      if (data.error) {
+        document.getElementById('chatBox').innerHTML += `<div class="bot" style="color:red;">Error: ${data.error}</div>`;
+      } else {
+        document.getElementById('chatBox').innerHTML += `<div class="bot">${data.answer}</div>`;
+      }
+
+      // Scroll chat box to bottom
+      let chatBox = document.getElementById('chatBox');
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    document.getElementById('pdfFile').addEventListener('change', uploadPDF);
+  </script>
+</body>
+</html>
